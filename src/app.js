@@ -11,7 +11,7 @@ window.onload = function() {
   // IPFS PubSub Room based example
   // IPFS npm install was missing half of the apparent dependencies
   var io = require('socket.io-client')
-  var k_SOCKET_ENDPOINT_PUBLIC_OSIRIS = "wss://67.169.94.129:3003"
+  var k_SOCKET_ENDPOINT_PUBLIC_OSIRIS = "ws://67.169.94.129:3003"
   var socket = io(k_SOCKET_ENDPOINT_PUBLIC_OSIRIS)
 
   // Avatar connected to Swarm! Initiate other p2p experiences

@@ -271,7 +271,7 @@ var datagramTick = setInterval(function() {
   for (var socketID in socketsMap) {
     var socket = socketsMap[socketID];
     for (var socketMapID in datagramMap) {
-      if (socket.id !== socketMapID) {
+      if (socketID !== socketMapID) {
         socket.emit('avatar-datagram', datagramMap);
       }
     }
