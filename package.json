@@ -4,7 +4,7 @@
   "description": "Metaverse JS Centralized",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "browserify src/app.js -o public/js/app.js -d & node server.js",
     "compile": "browserify src/app.js -o public/js/app.js -d"
   },
   "repository": {

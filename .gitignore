@@ -60,3 +60,5 @@ typings/
 views/bundle.js
 
 views/js/bundle.js
+
+public/js/app.js

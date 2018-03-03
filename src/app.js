@@ -17,14 +17,14 @@ window.onload = function() {
 
   // Avatar connected to Swarm! Initiate other p2p experiences
   socket.on("server-ack-connect", function (data) {
-    console.log("[SOCKET.IO] > server ack > ";
+    console.log("[SOCKET.IO] > server ack > ");
     console.log(data);
     startPhoneSession(data[socketid]);
   })
 
   // Initiate VOIP with avatars in same block
   socket.on("avatar-phone-advertise", function (data) {
-    console.log("[SOCKET.IO] > avatar phone advertise > ";
+    console.log("[SOCKET.IO] > avatar phone advertise > ");
     if (data['place'] !== currentBlock) {
       return;
     }
