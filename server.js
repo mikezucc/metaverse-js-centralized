@@ -261,11 +261,11 @@ var connectedPeers = 0;
 var datagramQueue = [];
 var peerJSIdList = [];
 var datagramTick = setInterval(function() {
-  var socketsMap = io.sockets.sockets;
-  for (var socketID in socketsMap) {
-    var socket = socketsMap[socketID];
-
-  }
+  // var socketsMap = io.sockets.sockets;
+  // for (var socketID in socketsMap) {
+  //   var socket = socketsMap[socketID];
+  //
+  // }
   io.sockets.emit('avatar-datagram', {"dgq":datagramQueue});
   datagramQueue = [];
 }, 100)
@@ -283,7 +283,7 @@ io.on('connection', function (socket) {
   var peerjsidlocal;
   var collectedPopulation = false;
   var currentPlace = "";
-  socket.emit('server-ack-connect', {'socketid':socket.id})
+  socket.emit('server-ack-connect', {'socket_id':socket.id})
   socket.on('avatar-phone-advertise', function(data) {
       data['socketid'] = socket.id;
       socket.broadcast.emit('avatar-audible', data)
@@ -373,7 +373,7 @@ io.on('connection', function (socket) {
         worldPopulation[currentPlace] = population;
       }
     }
-    io.sockets.emit('avatar-disconnect', {"peer_id":socketidLocal});
+    io.sockets.emit('avatar-disconnect', {"socket_id":socketidLocal});
     io.sockets.emit('worldPopulation', worldPopulation);
   });
   socket.on('d', function (data) {

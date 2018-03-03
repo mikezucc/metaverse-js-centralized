@@ -2,7 +2,6 @@ window.onload = function() {
   // intended to create rooms based on current IPFS file identifier
   var hrefPathComponents = window.location.pathname.split('/');
   var currentBlock = hrefPathComponents.indexOf("ipfs") != -1 ? hrefPathComponents[hrefPathComponents.indexOf("ipfs")+1] : "city_center";
-  var my_peer_id;
 
   // for use with example WebRTC via https://github.com/stephenlb/webrtc-sdk
   // used for VOIP because its novel
@@ -19,7 +18,7 @@ window.onload = function() {
   socket.on("server-ack-connect", function (data) {
     console.log("[SOCKET.IO] > server ack > ");
     console.log(data);
-    startPhoneSession(data[socketid]);
+    startPhoneSession(data["socket_id"]);
   })
 
   // Initiate VOIP with avatars in same block
@@ -33,6 +32,7 @@ window.onload = function() {
   })
 
   socket.on('avatar-disconnect', function(info) {
+    var peerid = info["socket_id"];
     console.log("IPFS PUBSUB ROOM >> LEFT >> " + peerid );
     var peerBox = document.getElementById('box' + peerid);
     if (peerBox) {
@@ -78,108 +78,21 @@ window.onload = function() {
   })
 
   socket.on('avatar-datagram', function (datagram) {
-    var peerid = datagram["peer_id"];
-    processDataGram(peerid, datagram);
+    var reportedAvatarMetadata = datagram["dgq"];
+    for (var i=0; i<reportedAvatarMetadata.length;i++) {
+      var metadata = JSON.parse(reportedAvatarMetadata[i]);
+      var peerid = metadata["socket_id"];
+      processDataGram(peerid, metadata);
+    }
   })
 
   socket.on('avatar-face', function (data) {
-    var peerid = data["peer_id"];
+    var peerid = data["socket_id"];
     processAvatarFace(peerid, data);
   })
 
   // see github.com/mikezucc/metaverse-ipfs
   // ipfs.once('ready', () => ipfs.id((err, info) => {
-  //   if (err) { throw err }
-  //   console.log('IPFS node ready with address ' + info.id)
-  //   my_peer_id = info.id;
-  //   startPhoneSession(my_peer_id);
-  //
-  //   room = Room(ipfs, currentBlock)
-  //
-  //   room.on('peer joined', (peerid) => {
-  //     console.log("IPFS PUBSUB ROOM >> JOINED >> " + peerid );
-  //   })
-  //
-  //   room.on('peer left', (peerid) => {
-  //     console.log("IPFS PUBSUB ROOM >> LEFT >> " + peerid );
-  //     return;
-  //     var peerBox = document.getElementById('box' + peerid);
-  //     if (peerBox) {
-  //       var position = peerBox.getAttribute('position');
-  //       var rotation = peerBox.getAttribute('rotation');
-  //       position.y = 3;
-  //       for (var i = 0; i < 4; i++) {
-  //         showQuadDialog(position, rotation, "AVATAR DISCONNECTED");
-  //       }
-  //     }
-  //
-  //     if (peerBox) {
-  //       document.querySelector('a-scene').removeChild(peerBox);
-  //     }
-  //     var peerHat = document.getElementById('hat' + peerid);
-  //     if (peerHat) {
-  //       document.querySelector('a-scene').removeChild(peerHat);
-  //     }
-  //
-  //     var peerChat = document.getElementById('speech' + peerid);
-  //     if (peerChat) {
-  //       document.querySelector('a-scene').removeChild(peerChat);
-  //     }
-  //
-  //     var peerSombro = document.getElementById('sombro' + peerid);
-  //     if (peerSombro) {
-  //       document.querySelector('a-scene').removeChild(peerSombro);
-  //     }
-  //   })
-  //
-  //   /**
-  //   Previously this relied on a central SocketIO nervous center
-  //   to receive all datagram ticks from the clients and queue them up
-  //   so that each client can maintain a steady uptick and downtick rate.
-  //
-  //   Switching to IPFS/libp2p/signalling star is that the clients now form
-  //   a graph where every node is connected to every node. Given graph `M`
-  //   means `M` connections per client, which would proportionally put
-  //   strain on to each node as the graph increased.
-  //
-  //   One solution to this would be set up a fully cyclic directed graph,
-  //   where each node is responsible for relaying a HT of its counter-clockwise
-  //   nodes to the next set. The issue with this, as although it does solve reducing
-  //   the number of connections formed, its frame size increases at some rate with `M`.
-  //   But this can be resolved to be log efficient by distributing HT
-  //   responsibility over the peer list in the cycle, essentially forming "rings".
-  //   In a simlpe fashion, this would be up to the signalling server to delegate out
-  //   population of the "rings". In a fully distributed sense, the network
-  //   would have to agree on a HT splitting strategy.
-  //
-  //   In this case Message should always contain "type"
-  //
-  //   */
-  //   room.on('message', (message) => {
-  //     console.log('got message from ' + message.from);
-  //     var peerid = message.from;
-  //     if (peerid === my_peer_id) {
-  //       console.log("MESSAGE SAME SENDER");
-  //       return;
-  //     }
-  //     var datagram = JSON.parse(message.data);
-  //     console.log(datagram);
-  //     var message_type = datagram["type"]
-  //     if (message_type === "dg") {
-  //       /**
-  //       var message_type = info['type']; // dg
-  //       var location = info['location'];
-  //       var rotation = info['rotation'];
-  //       */
-  //       processDataGram(peerid, datagram);
-  //     } else if (message_type === "avatar-face") {
-  //       /**
-  //       var message_type = info['type']; // avatar-face
-  //       var imageBuffer = datagram['imgbuffer']; // encoded string
-  //       */
-  //       processAvatarFace(peerid, datagram);
-  //     }
-  //   })
   // }))
 
   function repo() {
@@ -213,9 +126,11 @@ window.onload = function() {
   // Avatar positional adata updates
   function processDataGram(peerid, info) {
     if ((peerid == null) || (peerid === "") || ("undefined" === typeof peerid)) {
+      console.log("[PROCESS DATAGRAM] EMPTY PEER ID");
        return
     }
     if (peerid === socket.id) {
+      console.log("[PROCESS DATAGRAM] SAME SOCKET DGQ");
       return
     }
     var position = info['position'];
@@ -395,7 +310,7 @@ window.onload = function() {
       // console.log(position);
       lastRotation = rotation;
       lastPosition = position;
-      socket.emit("avatar-datagram", JSON.stringify({ 'type':'dg', 'position': position, 'rotation':rotation }));
+      socket.emit("avatar-datagram", JSON.stringify({ "socket_id": socket.id, 'type':'dg', 'position': position, 'rotation':rotation }));
       if (position.x < 0) {
         position.x = -position.x;
       }
@@ -423,7 +338,7 @@ window.onload = function() {
             context.drawImage(video, 0, 0, 256, 256);
             var dataURL = canvas.toDataURL('image/jpeg', 0.1);
             console.log("created avatar face with " + dataURL);
-            socket.emit("avatar-face", JSON.stringify( {'type':'avatar-face', 'imagebuffer': dataURL} ) );
+            socket.emit("avatar-face", JSON.stringify( {"socket_id": socket.id, 'type':'avatar-face', 'imagebuffer': dataURL} ) );
         }, 300);
     });
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.oGetUserMedia;
