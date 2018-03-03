@@ -24,23 +24,23 @@ var database; //mongo reference created later
 var https_cert_options;
 if (k_USE_HTTPS) {
   https_cert_options = {
-    key: fs.readFileSync('./topsecret/example.com.key'),
-    cert: fs.readFileSync('./topsecret/9ca2a53ff8ed893e.crt')
+    key: fs.readFileSync('../topsecret/example.com.key'),
+    cert: fs.readFileSync('../topsecret/9ca2a53ff8ed893e.crt')
   }
 } else {
   https_cert_options = {};
 }
 
 var app = express();
+app.all('/topsecret', function (req,res, next) {
+   res.status(403).send({
+      message: 'Access Forbidden'
+   });
+});
 app.use(ecstatic({
   root: __dirname,
   handleError : false
 }));
-// app.all('/topsecret/*', function (req,res, next) {
-//    res.status(403).send({
-//       message: 'Access Forbidden'
-//    });
-// });
 app.use(function(req,res,next) {
   // res.header("Access-Control-Allow-Origin","*")
   res.header("Access-Control-Allow-Methods","POST,GET")
