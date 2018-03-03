@@ -1,3 +1,6 @@
+//HTTPS
+const k_USE_HTTPS = false;
+
 var ecstatic = require('ecstatic')
 var fs = require('fs')
 var Slack = require('slack-node')
@@ -17,9 +20,15 @@ var database; //mongo reference created later
 // slack = new Slack();
 // slack.setWebhook(webhookUri);
 
-var options = {
-  key: fs.readFileSync('example.com.key'),
-  cert: fs.readFileSync('9ca2a53ff8ed893e.crt')
+// For HTTPS configurations
+var https_cert_options;
+if (k_USE_HTTPS) {
+  https_cert_options = {
+    key: fs.readFileSync('example.com.key'),
+    cert: fs.readFileSync('9ca2a53ff8ed893e.crt')
+  }
+} else {
+  https_cert_options = {};
 }
 
 var app = express();
@@ -35,7 +44,12 @@ app.use(function(req,res,next) {
 })
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded())
-var server = require('https').createServer(options, app)
+var server;
+if (k_USE_HTTPS) {
+  server = require('https').createServer(https_cert_options, app)
+} else {
+  server = require('http').createServer(app)
+}
 
 app.get('/coordinates', function(req, res) {
   var xCoord = req.query.x;
