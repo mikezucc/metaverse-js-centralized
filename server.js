@@ -247,6 +247,11 @@ var connectedPeers = 0;
 var datagramQueue = [];
 var peerJSIdList = [];
 var datagramTick = setInterval(function() {
+  var socketsMap = io.sockets.sockets;
+  for (var socketID in socketsMap) {
+    var socket = socketsMap[socketID];
+
+  }
   io.sockets.emit('avatar-datagram', {"dgq":datagramQueue});
   datagramQueue = [];
 }, 100)
@@ -264,24 +269,24 @@ io.on('connection', function (socket) {
   var peerjsidlocal;
   var collectedPopulation = false;
   var currentPlace = "";
-  socket.emit('admiral-ackbar', {'socketid':socket.id})
-  socket.on('avatar-audible', function(data) {
+  socket.emit('server-ack-connect', {'socketid':socket.id})
+  socket.on('avatar-phone-advertise', function(data) {
       data['socketid'] = socket.id;
       socket.broadcast.emit('avatar-audible', data)
   })
   console.log(printDate() + "\x1b[33m" + connectedPeers + "\x1b[0m" + " peers online -- \x1b[1mCONNECT!\x1b[0m " + socket.id + "  \x1b[2mvector > " + socket.request.headers['referrer']  + "----\x1b[33m" + socket.request.headers['host'] + "\x1b[0m\x1b[2m using " +  socket.request.headers['user-agent'] + " language " + socket.request.headers['accept-language'] + "\x1b[0m");
   // slack emoji
   if (connectedPeers > 5) {
-    slack.webhook({
-      channel: "#memeverse-reporting",
-      username: "Daemon of the Gate",
-      icon_emoji: ":ghost:",
-      text: ":ghost: Gate Daemon says: User connected, " + connectedPeers + " active"
-    }, function(err, response) {
-      if (err) {
-          console.log(response);
-      }
-    });
+    // slack.webhook({
+    //   channel: "#memeverse-reporting",
+    //   username: "Daemon of the Gate",
+    //   icon_emoji: ":ghost:",
+    //   text: ":ghost: Gate Daemon says: User connected, " + connectedPeers + " active"
+    // }, function(err, response) {
+    //   if (err) {
+    //       console.log(response);
+    //   }
+    // });
   }
   socket.on('peerjs-connect-id', function (data) {})
 
@@ -336,16 +341,16 @@ io.on('connection', function (socket) {
     console.log(printDate() + "\x1b[33m" + connectedPeers + "\x1b[0m" + " peers online -- \x1b[1mDISCONNECT!\x1b[0m " + "\x1b[0m\x1b[2m" + socket.request.headers['host'] + "\x1b[0m");
     // slack emoji
     if (connectedPeers > 5){
-      slack.webhook({
-        channel: "#memeverse-reporting",
-        username: "Daemon of the Gate",
-        icon_emoji: ":ghost:",
-        text: ":skull: Gate Daemon says: User disconnected, " + connectedPeers + " active"
-      }, function(err, response) {
-        if (err) {
-            console.log(response);
-        }
-      });
+      // slack.webhook({
+      //   channel: "#memeverse-reporting",
+      //   username: "Daemon of the Gate",
+      //   icon_emoji: ":ghost:",
+      //   text: ":skull: Gate Daemon says: User disconnected, " + connectedPeers + " active"
+      // }, function(err, response) {
+      //   if (err) {
+      //       console.log(response);
+      //   }
+      // });
     }
     if (currentPlace != null) {
       var population = worldPopulation[currentPlace];
@@ -354,7 +359,7 @@ io.on('connection', function (socket) {
         worldPopulation[currentPlace] = population;
       }
     }
-    io.sockets.emit('avatar-disconnect', {"memeperp":socketidLocal});
+    io.sockets.emit('avatar-disconnect', {"peer_id":socketidLocal});
     io.sockets.emit('worldPopulation', worldPopulation);
   });
   socket.on('d', function (data) {

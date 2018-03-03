@@ -11,116 +11,176 @@ window.onload = function() {
 
   // IPFS PubSub Room based example
   // IPFS npm install was missing half of the apparent dependencies
-  const Room = require('ipfs-pubsub-room')
-  var room; // ivar
+  var io = require('socket.io-client')
+  var k_SOCKET_ENDPOINT_PUBLIC_OSIRIS = "67.169.94.129:3003"
+  var socket = io(k_SOCKET_ENDPOINT_PUBLIC_OSIRIS)
 
-  const ipfs = new Ipfs({
-    repo: repo(),
-    EXPERIMENTAL: {
-      pubsub: true
-    },
-    config: {
-      Addresses: {
-        Swarm: [
-          '/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'
-        ]
+  // Avatar connected to Swarm! Initiate other p2p experiences
+  socket.on("server-ack-connect", function (data) {
+    console.log("[SOCKET.IO] > server ack > ";
+    console.log(data);
+    startPhoneSession(data[socketid]);
+  })
+
+  // Initiate VOIP with avatars in same block
+  socket.on("avatar-phone-advertise", function (data) {
+    console.log("[SOCKET.IO] > avatar phone advertise > ";
+    if (data['place'] !== currentBlock) {
+      return;
+    }
+    var socketid = data['socketid'];
+    openVOIPConnection(socketid);
+  })
+
+  socket.on('avatar-disconnect', function(info) {
+    console.log("IPFS PUBSUB ROOM >> LEFT >> " + peerid );
+    var peerBox = document.getElementById('box' + peerid);
+    if (peerBox) {
+      var position = peerBox.getAttribute('position');
+      var rotation = peerBox.getAttribute('rotation');
+      position.y = 3;
+      for (var i = 0; i < 4; i++) {
+        showQuadDialog(position, rotation, "AVATAR DISCONNECTED");
       }
+    }
+
+    if (peerBox) {
+      document.querySelector('a-scene').removeChild(peerBox);
+    }
+    var peerHat = document.getElementById('hat' + peerid);
+    if (peerHat) {
+      document.querySelector('a-scene').removeChild(peerHat);
+    }
+
+    var peerChat = document.getElementById('speech' + peerid);
+    if (peerChat) {
+      document.querySelector('a-scene').removeChild(peerChat);
+    }
+
+    var peerSombro = document.getElementById('sombro' + peerid);
+    if (peerSombro) {
+      document.querySelector('a-scene').removeChild(peerSombro);
     }
   })
 
-  ipfs.once('ready', () => ipfs.id((err, info) => {
-    if (err) { throw err }
-    console.log('IPFS node ready with address ' + info.id)
-    my_peer_id = info.id;
-    startPhoneSession(my_peer_id);
-
-    room = Room(ipfs, currentBlock)
-
-    room.on('peer joined', (peerid) => {
-      console.log("IPFS PUBSUB ROOM >> JOINED >> " + peerid );
-    })
-
-    room.on('peer left', (peerid) => {
-      console.log("IPFS PUBSUB ROOM >> LEFT >> " + peerid );
-      return;
-      var peerBox = document.getElementById('box' + peerid);
-      if (peerBox) {
-        var position = peerBox.getAttribute('position');
-        var rotation = peerBox.getAttribute('rotation');
-        position.y = 3;
-        for (var i = 0; i < 4; i++) {
-          showQuadDialog(position, rotation, "AVATAR DISCONNECTED");
-        }
+  socket.on('worldPopulation', function(data){
+    console.log("world population");
+    console.log(data);
+    var populationString = "";
+    for (var world in data) {
+      if (data.hasOwnProperty(world)) {
+        var popString = data[world].toString();
+        console.log("population for " + world + " is " + popString);
+        populationString += (world + " (" + popString + " versers) -");
       }
+    }
+    document.getElementById('speechoutput').innerHTML = populationString;
+  })
 
-      if (peerBox) {
-        document.querySelector('a-scene').removeChild(peerBox);
-      }
-      var peerHat = document.getElementById('hat' + peerid);
-      if (peerHat) {
-        document.querySelector('a-scene').removeChild(peerHat);
-      }
+  socket.on('avatar-datagram', function (datagram) {
+    var peerid = datagram["peer_id"];
+    processDataGram(peerid, datagram);
+  })
 
-      var peerChat = document.getElementById('speech' + peerid);
-      if (peerChat) {
-        document.querySelector('a-scene').removeChild(peerChat);
-      }
+  socket.on('avatar-face', function (data) {
+    var peerid = data["peer_id"];
+    processAvatarFace(peerid, data);
+  })
 
-      var peerSombro = document.getElementById('sombro' + peerid);
-      if (peerSombro) {
-        document.querySelector('a-scene').removeChild(peerSombro);
-      }
-    })
-
-    /**
-    Previously this relied on a central SocketIO nervous center
-    to receive all datagram ticks from the clients and queue them up
-    so that each client can maintain a steady uptick and downtick rate.
-
-    Switching to IPFS/libp2p/signalling star is that the clients now form
-    a graph where every node is connected to every node. Given graph `M`
-    means `M` connections per client, which would proportionally put
-    strain on to each node as the graph increased.
-
-    One solution to this would be set up a fully cyclic directed graph,
-    where each node is responsible for relaying a HT of its counter-clockwise
-    nodes to the next set. The issue with this, as although it does solve reducing
-    the number of connections formed, its frame size increases at some rate with `M`.
-    But this can be resolved to be log efficient by distributing HT
-    responsibility over the peer list in the cycle, essentially forming "rings".
-    In a simlpe fashion, this would be up to the signalling server to delegate out
-    population of the "rings". In a fully distributed sense, the network
-    would have to agree on a HT splitting strategy.
-
-    In this case Message should always contain "type"
-
-    */
-    room.on('message', (message) => {
-      console.log('got message from ' + message.from);
-      var peerid = message.from;
-      if (peerid === my_peer_id) {
-        console.log("MESSAGE SAME SENDER");
-        return;
-      }
-      var datagram = JSON.parse(message.data);
-      console.log(datagram);
-      var message_type = datagram["type"]
-      if (message_type === "dg") {
-        /**
-        var message_type = info['type']; // dg
-        var location = info['location'];
-        var rotation = info['rotation'];
-        */
-        processDataGram(peerid, datagram);
-      } else if (message_type === "avatar-face") {
-        /**
-        var message_type = info['type']; // avatar-face
-        var imageBuffer = datagram['imgbuffer']; // encoded string
-        */
-        processAvatarFace(peerid, datagram);
-      }
-    })
-  }))
+  // see github.com/mikezucc/metaverse-ipfs
+  // ipfs.once('ready', () => ipfs.id((err, info) => {
+  //   if (err) { throw err }
+  //   console.log('IPFS node ready with address ' + info.id)
+  //   my_peer_id = info.id;
+  //   startPhoneSession(my_peer_id);
+  //
+  //   room = Room(ipfs, currentBlock)
+  //
+  //   room.on('peer joined', (peerid) => {
+  //     console.log("IPFS PUBSUB ROOM >> JOINED >> " + peerid );
+  //   })
+  //
+  //   room.on('peer left', (peerid) => {
+  //     console.log("IPFS PUBSUB ROOM >> LEFT >> " + peerid );
+  //     return;
+  //     var peerBox = document.getElementById('box' + peerid);
+  //     if (peerBox) {
+  //       var position = peerBox.getAttribute('position');
+  //       var rotation = peerBox.getAttribute('rotation');
+  //       position.y = 3;
+  //       for (var i = 0; i < 4; i++) {
+  //         showQuadDialog(position, rotation, "AVATAR DISCONNECTED");
+  //       }
+  //     }
+  //
+  //     if (peerBox) {
+  //       document.querySelector('a-scene').removeChild(peerBox);
+  //     }
+  //     var peerHat = document.getElementById('hat' + peerid);
+  //     if (peerHat) {
+  //       document.querySelector('a-scene').removeChild(peerHat);
+  //     }
+  //
+  //     var peerChat = document.getElementById('speech' + peerid);
+  //     if (peerChat) {
+  //       document.querySelector('a-scene').removeChild(peerChat);
+  //     }
+  //
+  //     var peerSombro = document.getElementById('sombro' + peerid);
+  //     if (peerSombro) {
+  //       document.querySelector('a-scene').removeChild(peerSombro);
+  //     }
+  //   })
+  //
+  //   /**
+  //   Previously this relied on a central SocketIO nervous center
+  //   to receive all datagram ticks from the clients and queue them up
+  //   so that each client can maintain a steady uptick and downtick rate.
+  //
+  //   Switching to IPFS/libp2p/signalling star is that the clients now form
+  //   a graph where every node is connected to every node. Given graph `M`
+  //   means `M` connections per client, which would proportionally put
+  //   strain on to each node as the graph increased.
+  //
+  //   One solution to this would be set up a fully cyclic directed graph,
+  //   where each node is responsible for relaying a HT of its counter-clockwise
+  //   nodes to the next set. The issue with this, as although it does solve reducing
+  //   the number of connections formed, its frame size increases at some rate with `M`.
+  //   But this can be resolved to be log efficient by distributing HT
+  //   responsibility over the peer list in the cycle, essentially forming "rings".
+  //   In a simlpe fashion, this would be up to the signalling server to delegate out
+  //   population of the "rings". In a fully distributed sense, the network
+  //   would have to agree on a HT splitting strategy.
+  //
+  //   In this case Message should always contain "type"
+  //
+  //   */
+  //   room.on('message', (message) => {
+  //     console.log('got message from ' + message.from);
+  //     var peerid = message.from;
+  //     if (peerid === my_peer_id) {
+  //       console.log("MESSAGE SAME SENDER");
+  //       return;
+  //     }
+  //     var datagram = JSON.parse(message.data);
+  //     console.log(datagram);
+  //     var message_type = datagram["type"]
+  //     if (message_type === "dg") {
+  //       /**
+  //       var message_type = info['type']; // dg
+  //       var location = info['location'];
+  //       var rotation = info['rotation'];
+  //       */
+  //       processDataGram(peerid, datagram);
+  //     } else if (message_type === "avatar-face") {
+  //       /**
+  //       var message_type = info['type']; // avatar-face
+  //       var imageBuffer = datagram['imgbuffer']; // encoded string
+  //       */
+  //       processAvatarFace(peerid, datagram);
+  //     }
+  //   })
+  // }))
 
   function repo() {
     return 'ipfs/pubsub-demo/' + Math.random()
@@ -154,6 +214,9 @@ window.onload = function() {
   function processDataGram(peerid, info) {
     if ((peerid == null) || (peerid === "") || ("undefined" === typeof peerid)) {
        return
+    }
+    if (peerid === socket.id) {
+      return
     }
     var position = info['position'];
     var rotation = info['rotation'];
@@ -304,7 +367,7 @@ window.onload = function() {
     });
   }
 
-  function phonePeer(socketid) {
+  function openVOIPConnection(socketid) {
     if (phone == null) { return; }
     if (phoneReady == false) { return; }
 
@@ -318,8 +381,8 @@ window.onload = function() {
   var lastPosition = "";
   var lastRotation = "";
   var datagramInterval = setInterval(function() {
-      if ((room == null) || ("undefined" === typeof room)) {
-        console.log("ROOM NOT CONNECTED >> no datagram broadcast");
+      if ((socket == null) || ("undefined" === typeof socket)) {
+        console.log("SOCKET NOT CONNECTED >> no datagram broadcast");
         return;
       }
       // console.log("scheduling datagram push");
@@ -332,12 +395,7 @@ window.onload = function() {
       // console.log(position);
       lastRotation = rotation;
       lastPosition = position;
-      var peers = room.getPeers();
-      for (var peer in peers) {
-        if (peer !== my_peer_id) {
-          room.sendTo(peer, JSON.stringify({ 'type':'dg', 'position': position, 'rotation':rotation }));
-        }
-      }
+      socket.emit("avatar-datagram", JSON.stringify({ 'type':'dg', 'position': position, 'rotation':rotation }));
       if (position.x < 0) {
         position.x = -position.x;
       }
@@ -358,19 +416,14 @@ window.onload = function() {
           var i = 0;
 
           var interval = setInterval(function() {
-            if ((room == null) || ("undefined" === typeof room)) {
+            if ((socket == null) || ("undefined" === typeof socket)) {
               console.log("ROOM NOT CONNECTED >> no avatar broadcast");
               return;
             }
             context.drawImage(video, 0, 0, 256, 256);
             var dataURL = canvas.toDataURL('image/jpeg', 0.1);
             console.log("created avatar face with " + dataURL);
-            var peers = room.getPeers();
-            for (var peer in peers) {
-              if (peer !== my_peer_id) {
-                  room.sendTo(peer, JSON.stringify( {'type':'avatar-face', 'imagebuffer': dataURL} ) );
-              }
-            }
+            socket.emit("avatar-face", JSON.stringify( {'type':'avatar-face', 'imagebuffer': dataURL} ) );
         }, 300);
     });
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.oGetUserMedia;
