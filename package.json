@@ -7,6 +7,10 @@
     "start": "node server.js",
     "compile": "browserify src/app.js -o public/js/app.js -d"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikezucc/metaverse-js-centralized"
+  },
   "author": "Michael Zuccarino <mikezuccarino@gmail.com>",
   "license": "MIT",
   "dependencies": {
