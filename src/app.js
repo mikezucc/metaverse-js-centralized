@@ -11,7 +11,7 @@ window.onload = function() {
   // IPFS PubSub Room based example
   // IPFS npm install was missing half of the apparent dependencies
   var io = require('socket.io-client')
-  var k_SOCKET_ENDPOINT_PUBLIC_OSIRIS = "67.169.94.129:3003"
+  var k_SOCKET_ENDPOINT_PUBLIC_OSIRIS = "wss://67.169.94.129:3003"
   var socket = io(k_SOCKET_ENDPOINT_PUBLIC_OSIRIS)
 
   // Avatar connected to Swarm! Initiate other p2p experiences
@@ -78,11 +78,13 @@ window.onload = function() {
   })
 
   socket.on('avatar-datagram', function (datagram) {
-    var reportedAvatarMetadata = datagram["dgq"];
-    for (var i=0; i<reportedAvatarMetadata.length;i++) {
-      var metadata = JSON.parse(reportedAvatarMetadata[i]);
+    for (var reportedAvatarMetadata in datagram) {
+      console.log(reportedAvatarMetadata);
+      var metadata = JSON.parse(datagram[reportedAvatarMetadata]);
       var peerid = metadata["socket_id"];
       processDataGram(peerid, metadata);
+
+      updateWithRandomFace(peerid);
     }
   })
 
@@ -94,9 +96,44 @@ window.onload = function() {
   // see github.com/mikezucc/metaverse-ipfs
   // ipfs.once('ready', () => ipfs.id((err, info) => {
   // }))
+  //
+  // function repo() {
+  //   return 'ipfs/pubsub-demo/' + Math.random()
+  // }
 
-  function repo() {
-    return 'ipfs/pubsub-demo/' + Math.random()
+  // Non-https/ avatar chooses to not broadcast webcam
+  function updateWithRandomFace(peerid) {
+    // var rando = Math.floor(Math.random() * 10) % 5;
+    // var imageBuffer;
+    // if (rando == 0) {
+    //   imageBuffer = "";
+    // } else if (rando == 1) {
+    //   imageBuffer = "";
+    // } else if (rando == 2) {
+    //   imageBuffer = "";
+    // } else if (rando == 3) {
+    //   imageBuffer = "";
+    // } else if (rando == 4) {
+    //   imageBuffer = "";
+    // }
+    // var peerBox;
+    // if (document.getElementById('box' + peerid)) {
+    //   peerBox = document.getElementById('box' + peerid);
+    // } else {
+    //   if (document.getElementById('sombro' + peerid) == null) {
+    //     return;
+    //   }
+    //   peerBox = document.createElement('a-box');
+    //   peerBox.id = 'box' + peerid;
+    //   document.querySelector('a-scene').appendChild(peerBox);
+    // }
+    //
+    // var img = new Image();
+    // img.src = imageBuffer;
+    // context.drawImage(img, 0, 0, 256, 256);
+    // var img = document.querySelector('img');
+    // img.setAttribute('src', imageBuffer);
+    // peerBox.setAttribute('material', 'src', 'url(' + imageBuffer + ')');
   }
 
   // Avatar media metadata updates
@@ -166,6 +203,9 @@ window.onload = function() {
       document.querySelector('a-scene').appendChild(peerBox);
       document.querySelector('a-scene').appendChild(peerHat);
       document.querySelector('a-scene').appendChild(peerChat);
+
+      var imageBuffer = "data:image/jpeg;base64,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";
+      peerBox.setAttribute('material', 'src', 'url(' + imageBuffer + ')');
     }
 
 

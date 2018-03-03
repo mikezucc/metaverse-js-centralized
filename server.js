@@ -24,8 +24,8 @@ var database; //mongo reference created later
 var https_cert_options;
 if (k_USE_HTTPS) {
   https_cert_options = {
-    key: fs.readFileSync('example.com.key'),
-    cert: fs.readFileSync('9ca2a53ff8ed893e.crt')
+    key: fs.readFileSync('./topsecret/example.com.key'),
+    cert: fs.readFileSync('./topsecret/9ca2a53ff8ed893e.crt')
   }
 } else {
   https_cert_options = {};
@@ -36,6 +36,11 @@ app.use(ecstatic({
   root: __dirname,
   handleError : false
 }));
+// app.all('/topsecret/*', function (req,res, next) {
+//    res.status(403).send({
+//       message: 'Access Forbidden'
+//    });
+// });
 app.use(function(req,res,next) {
   // res.header("Access-Control-Allow-Origin","*")
   res.header("Access-Control-Allow-Methods","POST,GET")
@@ -259,15 +264,21 @@ MongoClient.connect(url, function(err, db) {
 
 var connectedPeers = 0;
 var datagramQueue = [];
+var datagramMap = {};
 var peerJSIdList = [];
 var datagramTick = setInterval(function() {
-  // var socketsMap = io.sockets.sockets;
-  // for (var socketID in socketsMap) {
-  //   var socket = socketsMap[socketID];
-  //
-  // }
-  io.sockets.emit('avatar-datagram', {"dgq":datagramQueue});
+  var socketsMap = io.sockets.sockets;
+  for (var socketID in socketsMap) {
+    var socket = socketsMap[socketID];
+    for (var socketMapID in datagramMap) {
+      if (socket.id !== socketMapID) {
+        socket.emit('avatar-datagram', datagramMap);
+      }
+    }
+  }
+
   datagramQueue = [];
+  datagramMap = {};
 }, 100)
 
 function printDate() {
@@ -332,7 +343,8 @@ io.on('connection', function (socket) {
       }
       io.sockets.emit('worldPopulation', worldPopulation);
     }
-    datagramQueue.push(data);
+    datagramMap[socket.id] = data;
+    // datagramQueue.push(data);
   })
   socket.on('avatar-sound', function(data) {
     socket.broadcast.emit('avatar-sound', data);
