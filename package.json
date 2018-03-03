@@ -23,7 +23,7 @@
     "mongodb": "^3.0.3",
     "path": "^0.12.7",
     "slack-node": "^0.2.0",
-    "wave": "^0.2.3",
+    "wav": "^1.0.1",
     "socket.io-client": "2.0.4",
     "socket.io": "2.0.4"
   }
